@@ -1,0 +1,65 @@
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.home-card {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.home-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--heading);
+  color: var(--text-h);
+}
+
+.home-user {
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--text);
+}
+
+.home-email {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.home-note {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.home-users-link {
+  display: inline-block;
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+.home-logout {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.home-logout:hover {
+  border-color: var(--accent-border);
+}

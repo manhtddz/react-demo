@@ -1,0 +1,84 @@
+/* Form đăng nhập — demo mock Redux */
+
+.login-card {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: var(--bg);
+}
+
+.login-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--heading);
+  font-size: 1.35rem;
+  color: var(--text-h);
+}
+
+.login-hint {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-top: 0.35rem;
+}
+
+.login-input {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.login-input:focus {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 1px;
+}
+
+.login-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-error {
+    color: #f87171;
+  }
+}
+
+.login-submit {
+  margin-top: 1rem;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.login-submit:hover {
+  filter: brightness(1.05);
+}
+
+.login-submit:active {
+  transform: translateY(1px);
+}

@@ -1,0 +1,17 @@
+/* Khung chung cho khu vực auth (login, register, …) */
+.main-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--bg);
+  background-color: rgb(83, 83, 83);
+}
+
+.main-layout__main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
