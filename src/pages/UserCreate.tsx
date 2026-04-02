@@ -1,14 +1,14 @@
 import { } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createUserSchema, type CreateUserFormValues } from '../features/users/schemas/loginSchema'
+import { createUserSchema, type CreateUserFormValues } from '../features/users/schemas/createUserSchema'
 import { useForm } from 'react-hook-form'
-import { createUserThunk } from '../store/userSlice'
+import { clearUsersError, createUserThunk } from '../store/userSlice'
 import { useNavigate } from 'react-router-dom'
 
 export function UserCreatePage() {
   const dispatch = useAppDispatch()
-  const reduxError = useAppSelector(s => s.users.error)
+  const reduxValidationErrors = useAppSelector(s => s.users.validationErrors)
 
   const {
     register,          // gắn input vào form
@@ -21,14 +21,13 @@ export function UserCreatePage() {
   const navigate = useNavigate()
 
   const onSubmit = async (values: CreateUserFormValues) => {
-    // clearError()
     try {
       await dispatch(
         createUserThunk({ name: values.name, email: values.email, password: values.password }),
       ).unwrap()
       navigate('/users', { replace: true })
     } catch {
-      // Lỗi đã ghi vào state.auth.error trong extraReducers (rejectWithValue / lỗi runtime)
+      // Lỗi đã ghi vào state.users.error trong extraReducers (rejectWithValue / lỗi runtime)
     }
   }
 
@@ -37,9 +36,7 @@ export function UserCreatePage() {
     <div className="login-card">
       <h1 className="login-title">Tạo user</h1>
       <form className="login-form" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <label className="login-label" htmlFor="login-name">
-          Tên
-        </label>
+        <label className="login-label" htmlFor="login-name">Tên</label>
         <input
           id="login-name"
           className="login-input"
@@ -52,10 +49,13 @@ export function UserCreatePage() {
             {errors.name.message}
           </p>
         )}
+        {reduxValidationErrors?.name && (
+          <p className="login-error" role="alert">
+            {reduxValidationErrors?.name.join(', ')}
+          </p>
+        )}
 
-        <label className="login-label" htmlFor="login-email">
-          Email
-        </label>
+        <label className="login-label" htmlFor="login-email">Email</label>
         <input
           id="login-email"
           className="login-input"
@@ -68,10 +68,13 @@ export function UserCreatePage() {
             {errors.email.message}
           </p>
         )}
+        {reduxValidationErrors?.email && (
+          <p className="login-error" role="alert">
+            {reduxValidationErrors?.email.join(', ')}
+          </p>
+        )}
 
-        <label className="login-label" htmlFor="login-password">
-          Mật khẩu
-        </label>
+        <label className="login-label" htmlFor="login-password">Mật khẩu</label>
         <input
           id="login-password"
           className="login-input"
@@ -84,14 +87,13 @@ export function UserCreatePage() {
             {errors.password.message}
           </p>
         )}
-
-        {reduxError && (
+        {reduxValidationErrors?.password && (
           <p className="login-error" role="alert">
-            {reduxError}
+            {reduxValidationErrors?.password.join(', ')}
           </p>
         )}
 
-        <button className="login-submit" type="submit" disabled={isSubmitting}>
+        <button className="login-submit" type="submit" disabled={isSubmitting} onClick={() => dispatch(clearUsersError())}>
           Tạo user
         </button>
       </form>

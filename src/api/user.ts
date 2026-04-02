@@ -1,8 +1,10 @@
 import { delay } from '../utils/simulator'
-import type { User } from '../types/UserType'
-import { nanoid } from '@reduxjs/toolkit'
+import type { User, UserDataListParams, UserDataListResult } from '../types/UserType'
+import { UserNotFoundException } from '../types/ex/UserNotFoundException'
+import { ValidationException } from '../types/ex/ValidationException'
+import { ServerException } from '../types/ex/ServerException'
 
-let mockUsers: User[] = [
+const INITIAL_USERS: User[] = [
   { id: 1, name: 'Alice Demo', email: 'alice@demo.test', password: 'demo123' },
   { id: 2, name: 'Bob Demo', email: 'bob@demo.test', password: 'demo123' },
   { id: 3, name: 'Carol Demo', email: 'carol@demo.test', password: 'secret' },
@@ -17,86 +19,113 @@ let mockUsers: User[] = [
   { id: 12, name: 'Leo Demo', email: 'leo@demo.test', password: 'demo123' },
 ]
 
-export type FetchUsersParams = {
-  name?: string
-  email?: string
-  sortBy?: 'id' | 'name' | 'email'
-  sortDir?: 'asc' | 'desc'
-  pageIndex?: number
-  pageSize?: number
-}
+let _store: User[] = [...INITIAL_USERS]
 
-export type FetchUsersResult = {
-  items: User[]
-  total: number
-}
+// Helper dùng nội bộ để fake sort, filter, paginate, create user
+const getNextId = (): number =>
+  _store.length > 0 ? Math.max(..._store.map(u => u.id)) + 1 : 1
 
-export async function fetchUsers(
-  params?: FetchUsersParams,
-): Promise<FetchUsersResult> {
-  await delay(1000)
-  const name = params?.name?.trim().toLowerCase() ?? ''
-  const email = params?.email?.trim().toLowerCase() ?? ''
-  const sortBy = params?.sortBy ?? 'id'
-  const sortDir = params?.sortDir ?? 'asc'
-  const pageIndex = Math.max(params?.pageIndex ?? 0, 0)
-  const pageSize = Math.max(params?.pageSize ?? 5, 1)
+const sortUsers = (users: User[], sortBy: UserDataListParams['sortBy'] = 'id', sortDir: UserDataListParams['sortDir'] = 'asc'): User[] =>
+  [...users].sort((a, b) => {
+    const left = a[sortBy!]
+    const right = b[sortBy!]
 
-  const filtered = mockUsers.filter((user) => {
-    const matchName = name ? user.name.toLowerCase().includes(name) : true
-    const matchEmail = email ? user.email.toLowerCase().includes(email) : true
-    return matchName && matchEmail
-  })
+    const cmp =
+      typeof left === 'number' && typeof right === 'number'
+        ? left - right
+        : String(left).toLowerCase() > String(right).toLowerCase() ? 1 : -1
 
-  const sorted = [...filtered].sort((a, b) => {
-    const left = a[sortBy]
-    const right = b[sortBy]
-  
-    if (typeof left === 'number' && typeof right === 'number') {
-      const cmp = left - right
-      return sortDir === 'desc' ? -cmp : cmp
-    }
-  
-    const leftStr = String(left).toLowerCase()
-    const rightStr = String(right).toLowerCase()
-  
-    if (leftStr === rightStr) return 0
-  
-    const cmp = leftStr > rightStr ? 1 : -1
     return sortDir === 'desc' ? -cmp : cmp
   })
 
-  const start = pageIndex * pageSize
-  const end = start + pageSize
-  const items = sorted.slice(start, end)
+const validateCreateUserPayload = (
+  payload: Omit<User, 'id'>,
+  exists: boolean,
+): { errors: Record<string, string[]>; code: string } | null => {
+  const errors: Record<string, string[]> = {}
 
-  return {
-    items,
-    total: filtered.length,
+  const emailTrim = payload.email.trim().toLowerCase()
+  const nameTrim = payload.name.trim()
+  const passwordTrim = payload.password.trim()
+
+  // Chọn code theo thứ tự ưu tiên tương tự logic if-else trước đây.
+
+  if (emailTrim === '') {
+    errors.email = ['Email không được để trống.']
   }
+
+  if (nameTrim === '') {
+    errors.name = ['Tên không được để trống.']
+  }
+
+  if (passwordTrim === '') {
+    errors.password = ['Mật khẩu không được để trống.']
+  } else if (payload.password.length < 8) {
+    errors.password = ['Mật khẩu phải có ít nhất 8 ký tự.']
+  }
+
+  if (exists) {
+    if (!errors.email) {
+      errors.email = ['Email đã tồn tại.']
+    }
+  }
+
+  if (Object.keys(errors).length === 0) return null
+  return { errors, code: 'USER_VALIDATION_ERROR' }
 }
 
-export async function getUserByEmail(email: string): Promise<User | undefined> {
-  return mockUsers.find((user) => user.email === email)
-}
+export const userApi = {
+  async getUserDataList(params?: UserDataListParams): Promise<UserDataListResult> {
+    await delay(800)
 
-export async function createUser(payload: Omit<User, 'id'>): Promise<User[]> {
-  await delay(1000)
-  const maxId = Math.max(...mockUsers.map(u => Number(u.id)))
-  const id = maxId + 1
-  mockUsers = [...mockUsers, { ...payload, id }]
-  return [...mockUsers]
-}
+    const name = params?.name?.trim().toLowerCase() ?? ''
+    const email = params?.email?.trim().toLowerCase() ?? ''
+    const sortBy = params?.sortBy ?? 'id'
+    const sortDir = params?.sortDir ?? 'asc'
+    const pageIndex = Math.max(params?.pageIndex ?? 0, 0)
+    const pageSize = Math.max(params?.pageSize ?? 5, 1)
 
-export async function updateUser(payload: User): Promise<User[]> {
-  await delay(1000)
-  
-  mockUsers = mockUsers.map((user) => (user.id === payload.id ? payload : user))
-  return [...mockUsers]
-}
+    const filtered = _store.filter(u =>
+      (name ? u.name.toLowerCase().includes(name) : true) &&
+      (email ? u.email.toLowerCase().includes(email) : true),
+    )
 
-export async function deleteUser(id: string): Promise<User[]> {
-  await delay(1000)
-  mockUsers = mockUsers.filter((user) => user.id !== id)
-  return [...mockUsers]
+    const sorted = sortUsers(filtered, sortBy, sortDir)
+    const start = pageIndex * pageSize
+    const items = sorted.slice(start, start + pageSize)
+
+    return { items, total: filtered.length, pageIndex, pageSize }
+  },
+
+  async getUserByEmail(email: string): Promise<User> {
+    await delay(300)
+    const user = _store.find(u => u.email.toLowerCase() === email.toLowerCase())
+    if (!user) throw new UserNotFoundException(`Không tìm thấy user với email=${email}.`)
+    return { ...user }
+  },
+
+  async createUser(payload: Omit<User, 'id'>): Promise<User> {
+
+    const exists = _store.some(
+      u => u.email.toLowerCase() === payload.email.trim().toLowerCase(),
+    )
+
+    const validation = validateCreateUserPayload(payload, exists)
+    if (validation) {
+      throw new ValidationException(
+        'Dữ liệu không hợp lệ.',
+        validation.errors,
+        { status: 422, code: validation.code },
+      )
+    }
+
+    try {
+      await delay(800)
+      const newUser: User = { ...payload, id: getNextId() }
+      _store = [..._store, newUser]
+      return { ...newUser }
+    } catch {
+      throw new ServerException()
+    }
+  },
 }

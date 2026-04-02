@@ -29,19 +29,20 @@ export function UserListPage() {
   })
 
   const fetchParams = useMemo(
-    () => ({
-      name: searchName,
-      email: searchEmail,
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-      sortBy: (sorting[0]?.id as 'id' | 'name' | 'email' | undefined) ?? 'id',
-      sortDir: (sorting[0]?.desc ? 'desc' : 'asc') as 'asc' | 'desc',
-    }),
+    () => {
+      return {
+        name: searchName,
+        email: searchEmail,
+        pageIndex: pagination.pageIndex,
+        pageSize: pagination.pageSize,
+        sortBy: (sorting[0]?.id as 'id' | 'name' | 'email' | undefined) ?? 'id',
+        sortDir: (sorting[0]?.desc ? 'desc' : 'asc') as 'asc' | 'desc',
+      }
+    },
     [searchName, searchEmail, pagination.pageIndex, pagination.pageSize, sorting],
   )
 
   useEffect(() => {
-    setPagination((prev) => ({ ...prev }))
     void dispatch(fetchUsersThunk(fetchParams))
   }, [dispatch, fetchParams])
 

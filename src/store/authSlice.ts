@@ -1,11 +1,15 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { login } from '../api/auth'
+import { createSlice } from '@reduxjs/toolkit'
+import { authApi } from '../api/auth'
 import type { PublicUser } from '../types/UserType'
+import { createApiThunk } from '../utils/thunks'
+import type { ApiError } from '../types/ex/ApiError'
 
 export type AuthState = {
   isAuthenticated: boolean
   currentUser: PublicUser | null
   error: string | null
+  errorCode: string | null
+  validationErrors: Record<string, string[]> | null
   isLoading: boolean
 }
 
@@ -13,24 +17,18 @@ const initialState: AuthState = {
   isAuthenticated: false,
   currentUser: null,
   error: null,
+  errorCode: null,
+  validationErrors: null,
   isLoading: false,
 }
 
-export const loginThunk = createAsyncThunk(
+export const loginThunk = createApiThunk(
   'auth/login',
   async (
-    credentials: { email: string; password: string },
-    { rejectWithValue },
-  ) => {
-    try {
-      return await login(credentials)
-    } catch (err) {
-      if (err instanceof Error) {
-        return rejectWithValue(err.message)
-      }
-      return rejectWithValue('Đăng nhập thất bại. Vui lòng thử lại.')
-    }
-  },
+    credentials: { email: string; password: string }
+  ): Promise<PublicUser> => {
+    return await authApi.login(credentials)
+  }
 )
 
 const authSlice = createSlice({
@@ -41,9 +39,14 @@ const authSlice = createSlice({
       state.isAuthenticated = false
       state.currentUser = null
       state.error = null
+      state.errorCode = null
+      state.validationErrors = null
+      state.isLoading = false
     },
     clearAuthError: (state) => {
       state.error = null
+      state.errorCode = null
+      state.validationErrors = null
     },
   },
   extraReducers: (builder) => {
@@ -51,6 +54,8 @@ const authSlice = createSlice({
       .addCase(loginThunk.pending, (state) => {
         state.isLoading = true
         state.error = null
+        state.errorCode = null
+        state.validationErrors = null
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
         state.isLoading = false
@@ -60,19 +65,12 @@ const authSlice = createSlice({
       .addCase(loginThunk.rejected, (state, action) => {
         state.isLoading = false
         state.isAuthenticated = false
-        const fromReject =
-          typeof action.payload === 'string' ? action.payload : null
-        const fromError =
-          typeof action.error?.message === 'string'
-            ? action.error.message
-            : null
+        const payload = action.payload as ApiError | undefined
         state.error =
-          fromReject ??
-          fromError ??
-          'Đăng nhập thất bại. Vui lòng thử lại.'
+          payload?.message ?? 'Đăng nhập thất bại. Vui lòng thử lại.'
+        state.errorCode = payload?.code ?? null
+        state.validationErrors = payload?.errors ?? null
       })
-    // Thunk khác (vd. refreshTokenThunk): thêm .addCase(refreshTokenThunk.pending, ...)
-    // hoặc dùng builder.addMatcher(isAnyOf(a.pending, b.pending), ...) để gom loading.
   },
 })
 

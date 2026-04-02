@@ -1,7 +1,10 @@
 import { delay } from '../utils/simulator'
 import type { PublicUser } from '../types/UserType'
-import { AuthError } from '../types/ex/AuthError';
-import { getUserByEmail } from './user';
+import { userApi } from './user';
+import { AuthInvalidCredentialsException } from '../types/ex/AuthInvalidCredentialsException'
+import { UserNotFoundException } from '../types/ex/UserNotFoundException'
+import { ApiException } from '../types/ex/ApiException'
+import { ServerException } from '../types/ex/ServerException'
 
 /** Lỗi domain cho mock API — thunk bắt và map sang rejectWithValue */
 
@@ -10,18 +13,39 @@ import { getUserByEmail } from './user';
  * Giả lập HTTP login: độ trễ + tra user trong danh sách (mock).
  * Thực tế có thể thay bằng fetch/axios tới backend.
  */
-export async function login(
-  credentials: { email: string; password: string }
-): Promise<PublicUser> {
-  await delay(1500)
+export const authApi = {
+  login: async (
+    credentials: { email: string; password: string },
+  ): Promise<PublicUser> => {
+    await delay(1500)
 
-  const email = credentials.email.trim().toLowerCase()
-  const user = await getUserByEmail(email);
-  const checkCredential = user?.password === credentials.password;
+    const email = credentials.email.trim().toLowerCase()
 
-  if (!user && !checkCredential) {
-    throw new AuthError('Email hoặc mật khẩu không đúng.')
-  }
+    try {
+      const user = await userApi.getUserByEmail(email)
+      const checkCredential = user?.password === credentials.password
 
-  return { id: user.id, name: user.name, email: user.email }
+      if (!checkCredential) {
+        throw new AuthInvalidCredentialsException({
+          password: ['Mật khẩu không đúng.'],
+        })
+      }
+
+      return { id: user.id, name: user.name, email: user.email }
+    } catch (err) {
+      // Không tìm thấy user => map về invalid credentials (422) theo field email
+      if (err instanceof UserNotFoundException) {
+        throw new AuthInvalidCredentialsException({
+          email: ['Email hoặc mật khẩu không đúng.'],
+        })
+      }
+
+      // Nếu là lỗi API đã được phân loại => bubble lên để client map code/status đúng
+      if (err instanceof ApiException) throw err
+      // Lỗi hệ thống/unexpected => để client map đúng code/status 500
+      if (err instanceof Error) throw new ServerException(err.message)
+
+      throw new ServerException()
+    }
+  },
 }
