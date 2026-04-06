@@ -11,7 +11,7 @@ export class AuthInvalidCredentialsException extends ValidationException {
         ...(errors.email ? { email: errors.email } : {}),
         ...(errors.password ? { password: errors.password } : {}),
       },
-      { status: 422, code: 'AUTH_INVALID_CREDENTIALS' },
+      { status: 401, code: 'AUTH_INVALID_CREDENTIALS' },
     )
     this.name = 'AuthInvalidCredentialsException'
   }

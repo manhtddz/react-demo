@@ -1,8 +1,8 @@
 import { delay } from '../utils/simulator'
 import type { User, UserDataListParams, UserDataListResult } from '../types/UserType'
-import { UserNotFoundException } from '../types/ex/UserNotFoundException'
 import { ValidationException } from '../types/ex/ValidationException'
 import { ServerException } from '../types/ex/ServerException'
+import { NotFoundException } from '../types/ex/NotFoundException'
 
 const INITIAL_USERS: User[] = [
   { id: 1, name: 'Alice Demo', email: 'alice@demo.test', password: 'demo123' },
@@ -38,7 +38,7 @@ const sortUsers = (users: User[], sortBy: UserDataListParams['sortBy'] = 'id', s
     return sortDir === 'desc' ? -cmp : cmp
   })
 
-const validateCreateUserPayload = (
+const validateUserPayload = (
   payload: Omit<User, 'id'>,
   exists: boolean,
 ): { errors: Record<string, string[]>; code: string } | null => {
@@ -100,7 +100,14 @@ export const userApi = {
   async getUserByEmail(email: string): Promise<User> {
     await delay(300)
     const user = _store.find(u => u.email.toLowerCase() === email.toLowerCase())
-    if (!user) throw new UserNotFoundException(`Không tìm thấy user với email=${email}.`)
+    if (!user) throw new NotFoundException(`Không tìm thấy user với email=${email}.`)
+    return { ...user }
+  },
+
+  async getUserById(id: number): Promise<User> {
+    await delay(300)
+    const user = _store.find(u => u.id === id)
+    if (!user) throw new NotFoundException(`Không tìm thấy user với id=${id}.`)
     return { ...user }
   },
 
@@ -110,7 +117,7 @@ export const userApi = {
       u => u.email.toLowerCase() === payload.email.trim().toLowerCase(),
     )
 
-    const validation = validateCreateUserPayload(payload, exists)
+    const validation = validateUserPayload(payload, exists)
     if (validation) {
       throw new ValidationException(
         'Dữ liệu không hợp lệ.',
@@ -124,6 +131,47 @@ export const userApi = {
       const newUser: User = { ...payload, id: getNextId() }
       _store = [..._store, newUser]
       return { ...newUser }
+    } catch {
+      throw new ServerException()
+    }
+  },
+
+  async updateUser(id: number, payload: Omit<User, 'id'>): Promise<User> {
+
+    const exists = _store.some(
+      u => u.id !==id && u.email.toLowerCase() === payload.email.trim().toLowerCase(),
+    )
+    const user = _store.find(u => u.id === id)
+    if (!user) throw new NotFoundException(`Không tìm thấy user với id=${id}.`)
+
+    const validation = validateUserPayload(payload, exists)
+    if (validation) {
+      throw new ValidationException(
+        'Dữ liệu không hợp lệ.',
+        validation.errors,
+        { status: 422, code: validation.code },
+      )
+    }
+
+    try {
+      await delay(800)
+      const updatedUser: User = { ...user, ...payload }
+      _store = _store.map(u => u.id === id ? updatedUser : u)
+      return { ...updatedUser }
+    } catch {
+      throw new ServerException()
+    }
+  },
+
+  async deleteUserById(id: number): Promise<User> {
+
+    const user = _store.find(u => u.id === id)
+    if (!user) throw new NotFoundException(`Không tìm thấy user với id=${id}.`)
+
+    try {
+      await delay(800)
+      _store = _store.filter(u => u.id !== id)
+      return { ...user }
     } catch {
       throw new ServerException()
     }

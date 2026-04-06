@@ -1,14 +1,13 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice, isAnyOf } from '@reduxjs/toolkit'
 import { authApi } from '../api/auth'
 import type { PublicUser } from '../types/UserType'
 import { createApiThunk } from '../utils/thunks'
-import type { ApiError } from '../types/ex/ApiError'
 
 export type AuthState = {
   isAuthenticated: boolean
   currentUser: PublicUser | null
   error: string | null
-  errorCode: string | null
+  errorCode: number | null
   validationErrors: Record<string, string[]> | null
   isLoading: boolean
 }
@@ -51,26 +50,63 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(loginThunk.pending, (state) => {
-        state.isLoading = true
+      // ── fulfilled — mỗi case xử lý state khác nhau nên giữ riêng ──
+      .addCase(loginThunk.fulfilled, (state, action) => {
+        state.isAuthenticated = true
+        state.currentUser = action.payload
         state.error = null
         state.errorCode = null
         state.validationErrors = null
-      })
-      .addCase(loginThunk.fulfilled, (state, action) => {
         state.isLoading = false
-        state.isAuthenticated = true
-        state.currentUser = action.payload
       })
-      .addCase(loginThunk.rejected, (state, action) => {
-        state.isLoading = false
-        state.isAuthenticated = false
-        const payload = action.payload as ApiError | undefined
-        state.error =
-          payload?.message ?? 'Đăng nhập thất bại. Vui lòng thử lại.'
-        state.errorCode = payload?.code ?? null
-        state.validationErrors = payload?.errors ?? null
-      })
+
+      // ── pending — tất cả giống nhau → gom vào 1 matcher ──
+      .addMatcher(
+        isAnyOf(
+          loginThunk.pending,
+        ),
+        (state) => {
+          state.isLoading = true
+          state.error = null
+          state.errorCode = null
+          state.validationErrors = null
+        },
+      )
+
+      // ── rejected — tất cả giống nhau → gom vào 1 matcher ──
+      .addMatcher(
+        isAnyOf(
+          loginThunk.rejected,
+        ),
+        (state, action) => {
+          state.isLoading = false
+          const payload = action.payload
+
+          const statusCode = payload?.status ?? null
+          state.errorCode = statusCode
+
+          switch (statusCode) {
+            // Validation errors (Laravel-style 401 - Unauthorized)
+            case 401: {
+              state.error = payload?.message ?? null
+              state.validationErrors = payload?.errors ?? null
+              break
+            }
+            // System error
+            case 500: {
+              state.error = payload?.message ?? null
+              state.validationErrors = null
+              break
+            }
+
+            default: {
+              state.error = payload?.message ?? 'Đã có lỗi xảy ra.'
+              state.validationErrors = payload?.errors ?? null
+              break
+            }
+          }
+        },
+      )
   },
 })
 

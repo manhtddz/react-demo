@@ -12,6 +12,7 @@ type UsersState = {
   error: string | null
   errorCode: number | null
   validationErrors: Record<string, string[]> | null
+  refetchSignal: number
 }
 
 const initialState: UsersState = {
@@ -21,6 +22,7 @@ const initialState: UsersState = {
   error: null,
   errorCode: null,
   validationErrors: null,
+  refetchSignal: 0,
 }
 
 export const fetchUsersThunk = createApiThunk(
@@ -37,19 +39,19 @@ export const createUserThunk = createApiThunk(
   },
 )
 
-// export const updateUserThunk = createApiThunk(
-//   'users/updateUser',
-//   async (payload: User) => {
-//     return await userApi.updateUser(payload)
-//   },
-// )
+export const updateUserThunk = createApiThunk(
+  'users/updateUser',
+  async (payload: User) => {
+    return await userApi.updateUser(payload.id, payload)
+  },
+)
 
-// export const deleteUserThunk = createApiThunk(
-//   'users/deleteUser',
-//   async (id: string) => {
-//     return await userApi.deleteUserById(id)
-//   },
-// )
+export const deleteUserThunk = createApiThunk(
+  'users/deleteUser',
+  async (id: number) => {
+    return await userApi.deleteUserById(id)
+  },
+)
 
 const usersSlice = createSlice({
   name: 'users',
@@ -73,28 +75,32 @@ const usersSlice = createSlice({
         state.validationErrors = null
         state.status = 'succeeded'
       })
-      .addCase(createUserThunk.fulfilled, (state, action) => {
-        state.list = [...state.list, action.payload]  // thêm user mới vào list
+      .addCase(createUserThunk.fulfilled, (state) => {
         state.error = null
         state.errorCode = null
         state.validationErrors = null
         state.status = 'succeeded'
+        state.refetchSignal += 1
       })
-      // .addCase(updateUserThunk.fulfilled, (state, action) => {
-      //   const index = state.list.findIndex(u => u.id === action.payload.id)
-      //   if (index !== -1) state.list[index] = action.payload
-      // })
-      // .addCase(deleteUserThunk.fulfilled, (state, action) => {
-      //   state.list = state.list.filter(u => u.id !== action.payload)
-      // })
+      .addCase(updateUserThunk.fulfilled, (state) => {
+        state.error = null
+        state.errorCode = null
+        state.validationErrors = null
+        state.status = 'succeeded'
+        state.refetchSignal += 1
+      })
+      .addCase(deleteUserThunk.fulfilled, (state) => {
+        state.refetchSignal += 1
+        state.status = 'succeeded'
+      })
 
       // ── pending — tất cả giống nhau → gom vào 1 matcher ──
       .addMatcher(
         isAnyOf(
           fetchUsersThunk.pending,
           createUserThunk.pending,
-          // updateUserThunk.pending,
-          // deleteUserThunk.pending,
+          updateUserThunk.pending,
+          deleteUserThunk.pending,
         ),
         (state) => {
           state.status = 'loading'
@@ -109,8 +115,8 @@ const usersSlice = createSlice({
         isAnyOf(
           fetchUsersThunk.rejected,
           createUserThunk.rejected,
-          // updateUserThunk.rejected,
-          // deleteUserThunk.rejected,
+          updateUserThunk.rejected,
+          deleteUserThunk.rejected,
         ),
         (state, action) => {
           state.status = 'failed'

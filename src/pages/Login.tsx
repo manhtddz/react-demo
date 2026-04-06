@@ -16,6 +16,7 @@ export function LoginPage() {
 
   const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated)
   const reduxError = useAppSelector(s => s.auth.error)
+  const reduxValidationErrors = useAppSelector(s => s.auth.validationErrors)
 
   const from = (location.state as LocationState | null)?.from?.pathname ?? '/'
 
@@ -71,6 +72,11 @@ export function LoginPage() {
             {errors.email.message}
           </p>
         )}
+        {reduxValidationErrors?.email && (
+          <p className="login-error" role="alert">
+            {reduxValidationErrors?.email?.join(', ')}
+          </p>
+        )}
 
         <label className="login-label" htmlFor="login-password">
           Mật khẩu
@@ -87,7 +93,12 @@ export function LoginPage() {
             {errors.password.message}
           </p>
         )}
-
+        {reduxValidationErrors?.password && (
+          <p className="login-error" role="alert">
+            {reduxValidationErrors?.password?.join(', ')}
+          </p>
+        )}
+        
         {reduxError && (
           <p className="login-error" role="alert">
             {reduxError}

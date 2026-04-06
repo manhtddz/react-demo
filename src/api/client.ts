@@ -27,17 +27,17 @@ const normalizeError = (err: unknown): ApiError => {
     }
 
     // Trường hợp throw plain object theo shape validation
-    if (typeof err === 'object' && err && 'errors' in err) {
-        const obj = err as { message?: unknown; status?: unknown; code?: unknown; errors?: unknown }
-        if (typeof obj.message === 'string' && obj.errors && typeof obj.errors === 'object') {
-            return {
-                code: typeof obj.code === 'string' ? obj.code : 'VALIDATION_ERROR',
-                message: obj.message,
-                status: typeof obj.status === 'number' ? obj.status : 422,
-                errors: obj.errors as Record<string, string[]>,
-            }
-        }
-    }
+    // if (typeof err === 'object' && err && 'errors' in err) {
+    //     const obj = err as { message?: unknown; status?: unknown; code?: unknown; errors?: unknown }
+    //     if (typeof obj.message === 'string' && obj.errors && typeof obj.errors === 'object') {
+    //         return {
+    //             code: typeof obj.code === 'string' ? obj.code : 'VALIDATION_ERROR',
+    //             message: obj.message,
+    //             status: typeof obj.status === 'number' ? obj.status : 422,
+    //             errors: obj.errors as Record<string, string[]>,
+    //         }
+    //     }
+    // }
 
     return { code: 'SERVER_ERROR', message: 'Đã có lỗi hệ thống.', status: 500 }
 }
