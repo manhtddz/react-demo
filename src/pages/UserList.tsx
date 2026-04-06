@@ -10,12 +10,7 @@ import { UserFormModal } from '../components/modals/users/UserFormModal'
 export function UserListPage() {
   const {
     table, status, total,
-    searchName, searchEmail,
-    pagination,
-    setSearchName, setSearchEmail,
-    refresh, goNext, goPrev,
-    isModalOpen, openCreateModal,
-    openEditModal, closeModal, editingUser,
+    filters, modal,
     onDeleteUser,
   } = useUsersTable()
 
@@ -24,20 +19,20 @@ export function UserListPage() {
       <div className="users-card">
         <div className="users-header">
           <h1>User List</h1>
-          <button className="users-reload" type="button" onClick={refresh} disabled={status === 'loading'}>
+          <button className="users-reload" type="button" onClick={filters.refresh} disabled={status === 'loading'}>
             Tải lại
           </button>
-          <button className="users-reload" type="button" onClick={openCreateModal} disabled={status === 'loading'}>
+          <button className="users-reload" type="button" onClick={modal.openCreateModal} disabled={status === 'loading'}>
             Tạo user
           </button>
           <Link className="users-create-link" to="/users/create">Tạo user</Link>
         </div>
 
         <UserSearchFilter
-          searchName={searchName}
-          searchEmail={searchEmail}
-          onNameChange={setSearchName}
-          onEmailChange={setSearchEmail}
+          searchName={filters.searchName}
+          searchEmail={filters.searchEmail}
+          onNameChange={filters.setSearchName}
+          onEmailChange={filters.setSearchEmail}
         />
 
         {status === 'loading' && <p className="users-meta">Đang tải users...</p>}
@@ -79,7 +74,7 @@ export function UserListPage() {
                       <button
                         type="button"
                         className="table-action-edit"
-                        onClick={() => { void openEditModal(row.original.id) }}
+                        onClick={() => { void modal.openEditModal(row.original.id) }}
                       >
                         Sửa
                       </button>
@@ -95,20 +90,19 @@ export function UserListPage() {
         )}
 
         <Pagination
-          pageIndex={pagination.pageIndex}
-          pageSize={pagination.pageSize}
+          pageIndex={filters.pagination.pageIndex}
+          pageSize={filters.pagination.pageSize}
           total={total}
-          onPrev={goPrev}
-          onNext={goNext}
+          onPrev={filters.goPrev}
+          onNext={filters.goNext}
         />
 
-        {/* ← modal nằm ở cuối, ngoài luồng layout */}
         <UserFormModal
-          key={editingUser?.id ?? 'create'}
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          defaultValues={editingUser ?? undefined}
-          editingUserId={editingUser?.id}
+          key={modal.editingUser?.id ?? 'create'}
+          isOpen={modal.isModalOpen}
+          onClose={modal.closeModal}
+          defaultValues={modal.editingUser ?? undefined}
+          editingUserId={modal.editingUser?.id}
         />
       </div>
     </section>
