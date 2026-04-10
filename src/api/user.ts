@@ -41,6 +41,7 @@ const sortUsers = (users: User[], sortBy: UserDataListParams['sortBy'] = 'id', s
 const validateUserPayload = (
   payload: Omit<User, 'id'>,
   exists: boolean,
+  existsName: boolean,
 ): { errors: Record<string, string[]>; code: string } | null => {
   const errors: Record<string, string[]> = {}
 
@@ -69,9 +70,14 @@ const validateUserPayload = (
       errors.email = ['Email đã tồn tại.']
     }
   }
+  if (existsName) {
+    if (!errors.name) {
+      errors.name = ['Tên đã tồn tại.']
+    }
+  }
 
   if (Object.keys(errors).length === 0) return null
-  return { errors, code: 'USER_VALIDATION_ERROR' }
+  return { errors, code: 'VALIDATION_ERROR' }
 }
 
 export const userApi = {
@@ -117,7 +123,11 @@ export const userApi = {
       u => u.email.toLowerCase() === payload.email.trim().toLowerCase(),
     )
 
-    const validation = validateUserPayload(payload, exists)
+    const existsName = _store.some(
+      u => u.name.toLowerCase() === payload.name.trim().toLowerCase(),
+    )
+
+    const validation = validateUserPayload(payload, exists, existsName)
     if (validation) {
       throw new ValidationException(
         'Dữ liệu không hợp lệ.',
@@ -139,12 +149,16 @@ export const userApi = {
   async updateUser(id: number, payload: Omit<User, 'id'>): Promise<User> {
 
     const exists = _store.some(
-      u => u.id !==id && u.email.toLowerCase() === payload.email.trim().toLowerCase(),
+      u => u.id !== id && u.email.toLowerCase() === payload.email.trim().toLowerCase(),
     )
     const user = _store.find(u => u.id === id)
     if (!user) throw new NotFoundException(`Không tìm thấy user với id=${id}.`)
 
-    const validation = validateUserPayload(payload, exists)
+    const existsName = _store.some(
+      u => u.id !== id && u.name.toLowerCase() === payload.name.trim().toLowerCase(),
+    )
+
+    const validation = validateUserPayload(payload, exists, existsName)
     if (validation) {
       throw new ValidationException(
         'Dữ liệu không hợp lệ.',

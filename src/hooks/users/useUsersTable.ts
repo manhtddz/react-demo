@@ -1,40 +1,40 @@
 // features/users/hooks/useUsersTable.tsx
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import {
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table'
-import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { deleteUserThunk, fetchUsersThunk } from '../../store/userSlice'
 import type { User } from '../../types/UserType'
 import { useUsersFilter } from './useUsersFilter'
 import { useUsersModal } from './useUsersModal'
+import { useDeleteUserMutation, useFetchUsersQuery } from '../../store/userRtkQuerySlice'
+import type { ApiError } from '../../types/ex/ApiError'
 
 export function useUsersTable() {
   const filters = useUsersFilter()
   const modal = useUsersModal()
 
-  const dispatch = useAppDispatch()
+  const {
+    data,
+    isLoading,
+    isFetching,   // ← đang refetch (invalidatesTags trigger)
+    isError,
+    error,
+  } = useFetchUsersQuery(filters.fetchParams)
 
-  const users = useAppSelector(s => s.users.list)
-  const total = useAppSelector(s => s.users.total)
-  const status = useAppSelector(s => s.users.status)
-  const refetchSignal = useAppSelector(s => s.users.refetchSignal)
+  const [deleteUser] = useDeleteUserMutation()
 
   const onDeleteUser = async (id: number) => {
-    try {
-      await dispatch(
-        deleteUserThunk(id),
-      ).unwrap()
-    } catch {
-      // Lỗi đã ghi vào state.users.error trong extraReducers (rejectWithValue / lỗi runtime)
-    }
+    await deleteUser(id).unwrap()
   }
+  const users = data?.items ?? []
+  const total = data?.total ?? 0
 
-  useEffect(() => {
-    void dispatch(fetchUsersThunk(filters.fetchParams))
-  }, [dispatch, filters.fetchParams, refetchSignal])
+  // map sang status string để không đổi interface trả về
+  const status = isLoading || isFetching ? 'loading'
+    : isError ? 'failed'
+      : 'succeeded'
 
   const columns = useMemo<ColumnDef<User>[]>(() => [
     { accessorKey: 'id', header: 'ID' },
@@ -59,6 +59,7 @@ export function useUsersTable() {
   return {
     table, status, total,
     filters, modal,
-    onDeleteUser
+    onDeleteUser,
+    error: isError ? (error as ApiError) : null,
   }
 }

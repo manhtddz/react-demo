@@ -2,8 +2,8 @@ import type { ApiError } from '../types/ex/ApiError'
 import { ValidationException } from '../types/ex/ValidationException'
 import { ApiException } from '../types/ex/ApiException'
 
-// Chuẩn hóa mọi lỗi về cùng shape
-const normalizeError = (err: unknown): ApiError => {
+/** Map exception classes (và Error) → `ApiError` — dùng chung cho thunk, RTK Query, v.v. */
+export const toApiError = (err: unknown): ApiError => {
     if (err instanceof Error) {
         if (err instanceof ValidationException) {
             return {
@@ -42,14 +42,13 @@ const normalizeError = (err: unknown): ApiError => {
     return { code: 'SERVER_ERROR', message: 'Đã có lỗi hệ thống.', status: 500 }
 }
 
-// Wrapper chính — sau này thay fetch/axios ở đây, không đụng thunk
+/** Mọi lỗi từ API (exception classes) được normalize về `ApiError` (plain object) tại đây — thunk, RTK Query chỉ bọc/bắt, không map lại. */
 export const apiCall = async <T>(
     fn: () => Promise<T>,
 ): Promise<T> => {
     try {
         return await fn()
     } catch (err) {
-        // Xử lý lỗi tập trung — sau này thêm: 401 logout, logging, metrics...
-        throw normalizeError(err)
+        throw toApiError(err)
     }
 }

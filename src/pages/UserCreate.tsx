@@ -1,14 +1,26 @@
 import { } from 'react'
-import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createUserSchema, type CreateUserFormValues } from '../features/users/schemas/createUserSchema'
 import { useForm } from 'react-hook-form'
-import { clearUsersError, createUserThunk } from '../store/userSlice'
 import { useNavigate } from 'react-router-dom'
+import { useCreateUserMutation } from '../store/userRtkQuerySlice'
+import { isValidationError, type ApiError } from '../types/ex/ApiError'
 
 export function UserCreatePage() {
-  const dispatch = useAppDispatch()
-  const reduxValidationErrors = useAppSelector(s => s.users.validationErrors)
+
+  const [createUser, { error: createError }] = useCreateUserMutation()
+
+  const mutationError = createError as ApiError | undefined
+
+  const getFieldError = (field: string): string | undefined => {
+    if (mutationError && isValidationError(mutationError)) {
+      return mutationError.errors[field]?.[0]
+    }
+  }
+
+  const generalError = mutationError && !isValidationError(mutationError)
+    ? mutationError.message
+    : null
 
   const {
     register,          // gắn input vào form
@@ -22,9 +34,7 @@ export function UserCreatePage() {
 
   const onSubmit = async (values: CreateUserFormValues) => {
     try {
-      await dispatch(
-        createUserThunk({ name: values.name, email: values.email, password: values.password }),
-      ).unwrap()
+      await createUser({ name: values.name, email: values.email, password: values.password }).unwrap()
       navigate('/users', { replace: true })
     } catch {
       // Lỗi đã ghi vào state.users.error trong extraReducers (rejectWithValue / lỗi runtime)
@@ -44,14 +54,9 @@ export function UserCreatePage() {
           autoComplete="name"
           {...register('name')}
         />
-        {errors.name && (
+        {(errors.name || getFieldError('name')) && (
           <p className="login-error" role="alert">
-            {errors.name.message}
-          </p>
-        )}
-        {reduxValidationErrors?.name && (
-          <p className="login-error" role="alert">
-            {reduxValidationErrors?.name.join(', ')}
+            {errors.name?.message ?? getFieldError('name')}
           </p>
         )}
 
@@ -63,14 +68,9 @@ export function UserCreatePage() {
           autoComplete="email"
           {...register('email')}
         />
-        {errors.email && (
+        {(errors.email || getFieldError('email')) && (
           <p className="login-error" role="alert">
-            {errors.email.message}
-          </p>
-        )}
-        {reduxValidationErrors?.email && (
-          <p className="login-error" role="alert">
-            {reduxValidationErrors?.email.join(', ')}
+            {errors.email?.message ?? getFieldError('email')}
           </p>
         )}
 
@@ -82,18 +82,16 @@ export function UserCreatePage() {
           autoComplete="current-password"
           {...register('password')}
         />
-        {errors.password && (
+        {(errors.password || getFieldError('password')) && (
           <p className="login-error" role="alert">
-            {errors.password.message}
+            {errors.password?.message ?? getFieldError('password')}
           </p>
         )}
-        {reduxValidationErrors?.password && (
-          <p className="login-error" role="alert">
-            {reduxValidationErrors?.password.join(', ')}
-          </p>
+        {generalError && (
+          <p className="login-error" role="alert">{generalError}</p>
         )}
 
-        <button className="login-submit" type="submit" disabled={isSubmitting} onClick={() => dispatch(clearUsersError())}>
+        <button className="login-submit" type="submit" disabled={isSubmitting}>
           Tạo user
         </button>
       </form>
